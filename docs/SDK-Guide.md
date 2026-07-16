@@ -542,6 +542,7 @@ Properties:
 - `EffectiveImmersionLevel`
 - `ProEqEnabled`
 - `ProEq`
+- `Battery`
 
 Events:
 
@@ -556,6 +557,7 @@ Events:
 - `EffectiveImmersionLevelChanged`
 - `ProEqEnabledChanged`
 - `ProEqChanged`
+- `BatteryChanged`
 
 ### Read state
 
@@ -567,6 +569,7 @@ Console.WriteLine($"ANC level: {connected.State.AncLevel}");
 Console.WriteLine($"Spatial: {connected.State.SpatialEnabled}");
 Console.WriteLine($"Mode: {connected.State.PersonalisationMode}");
 Console.WriteLine($"Immersion: {connected.State.ImmersionLevel}");
+Console.WriteLine($"Battery: {connected.State.Battery?.BatteryPercentage}%");
 ```
 
 ### Subscribe to state changes
@@ -581,7 +584,25 @@ connected.State.ImmersionLevelChanged += (_, args) =>
 {
     Console.WriteLine($"Immersion changed: {args.Previous} -> {args.Current}");
 };
+
+connected.State.BatteryChanged += (_, args) =>
+{
+    Console.WriteLine($"Battery changed: {args.Current?.BatteryPercentage}%");
+};
 ```
+
+### Battery
+
+Battery status is exposed as `NuraBatteryStatus` on `connected.State.Battery`.
+
+`RefreshAsync()` reads battery status as part of the full device refresh. You can also request it directly:
+
+```csharp
+var battery = await connected.State.RetrieveBatteryAsync();
+Console.WriteLine($"Battery: {battery?.BatteryPercentage}%");
+```
+
+The model includes the decoded percentage plus raw voltage, charger, and NTC fields for hosts that want to show more detailed diagnostics.
 
 ### ANC example
 
@@ -953,6 +974,8 @@ Again: stopping device monitoring also tears down the local RFCOMM session.
 
 Subscribe to `NuraClient.OnLog`.
 
+`NuraClient.MinimumLogLevel` controls the least verbose emitted level. It defaults to `Trace` for compatibility. Set it to `Information` in normal UI builds to avoid generating per-frame Bluetooth diagnostics; use `Trace` only while diagnosing a transport or protocol issue.
+
 Payload type: `src/NuraLib/Logging/NuraLogEventArgs.cs`
 
 Levels: `src/NuraLib/Logging/NuraLogLevel.cs`
@@ -966,6 +989,8 @@ Levels: `src/NuraLib/Logging/NuraLogLevel.cs`
 Example:
 
 ```csharp
+client.MinimumLogLevel = NuraLogLevel.Information;
+
 client.OnLog += (_, args) =>
 {
     Console.WriteLine(
@@ -991,17 +1016,19 @@ It is fine to log whether a key is present, which provisioning reason applies, a
 
 ## Console sample app
 
-`NuraApp` is a small console/TUI sample that demonstrates the live SDK integration path without WPF:
+`NuraTerm` is a small console/TUI sample that demonstrates the live SDK integration path without WPF:
 
 ```powershell
-dotnet run --project .\NuraApp\NuraApp.csproj
+dotnet run --project .\src\NuraTerm\NuraTerm.csproj
 ```
 
 The sample intentionally keeps all UI code in the app layer. It uses `NuraLib` only for auth, device discovery, provisioning, refresh, and monitoring.
 
+The selected-device display is capability-aware. It shows device family, profile, battery percentage, firmware/key/session status, and only the controls or feature chips that apply to the selected headset family and firmware.
+
 The important sequence is:
 
-1. load `nura-config.json` with `NuraConfigStore.LoadOrCreate`
+1. load `settings.nura.json` with `NuraConfigStore.LoadOrCreate`
 2. construct `NuraClient`
 3. persist `client.State.Configuration` whenever `RequestStateSave` fires
 4. resume stored auth if possible, otherwise prompt for email-code login
@@ -1012,7 +1039,7 @@ The important sequence is:
 9. call `StartMonitoringAsync()` to keep cached state updated from headset indications
 10. on shutdown, call `client.Monitoring.StopAsync()`, then call `StopMonitoringAsync()` for every connected device with `IsMonitoring` or `HasLocalSession`
 
-The sample uses `Environment.CurrentDirectory\nura-config.json` for convenience. Production apps should usually store config under an app-owned location such as `%LOCALAPPDATA%`, an encrypted settings store, or the host application's normal profile directory.
+`NuraTerm` uses `Environment.CurrentDirectory\settings.nura.json` for NuraLib state and `settings.tui.json` for terminal preferences. Production hosts should usually store these under an app-owned location such as `%LOCALAPPDATA%`, an encrypted settings store, or the host application's normal profile directory.
 
 The sample also shows two event patterns:
 

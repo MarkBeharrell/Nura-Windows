@@ -14,17 +14,25 @@ https://github.com/user-attachments/assets/b3b590cd-3b8b-4d8f-bac5-d6c3a74d1779
   />
 </p>
 
+# Commit messages
+
+All of the git commit messages should use sematic git commit messages, some have the project destination in them like:
+
+The project names have been renamed so in older commits they map out as this:
+`feat(app)` -> `feat(term)`: the former console app is now `NuraTerm`.
+`chore(ui)` -> `feat(desktop)`: the former popup UI is now `NuraDesktop`.
+
 # Summary
 
 This folder contains four related .NET projects:
 
 - `NuraLib`
   - the reusable Windows SDK surface for auth, discovery, provisioning, local encrypted control, state, profiles, configuration, and monitoring
-- `NuraApp`
+- `NuraTerm`
   - a small console/TUI sample app that demonstrates normal host integration with `NuraLib`
-- `NuraDesktopConsole`
+- `NuraUtilityConsole`
   - the Windows reverse-engineering and validation harness
-- `NuraPopupWpf`
+- `NuraDesktop`
   - an experimental graphical client consuming the live SDK model
 
 The practical goal is to recreate enough of the Nura app for Windows use:
@@ -58,13 +66,13 @@ Current limitations:
 - device-family coverage is still being expanded from the confirmed Nuraphone path
 - backend-assisted provisioning remains necessary if the host does not already have a persistent device key
 
-### NuraApp
+### NuraTerm
 
-`NuraApp` is the easiest live sample to run when validating SDK behavior as a host application.
+`NuraTerm` is the easiest live sample to run when validating SDK behavior as a host application.
 
 It demonstrates:
 
-- loading/saving `nura-config.json`
+- loading/saving `settings.nura.json`
 - auth resume and email-code login fallback
 - connection monitoring
 - provisioning devices when required
@@ -75,10 +83,10 @@ It demonstrates:
 Run it with:
 
 ```powershell
-dotnet run --project .\src\NuraApp\NuraApp.csproj
+dotnet run --project .\src\NuraTerm\NuraTerm.csproj
 ```
 
-### NuraDesktopConsole
+### NuraUtilityConsole
 
 Implemented and working:
 
@@ -106,55 +114,48 @@ Confirmed important result:
 - `session/start_4` returns `app_enc.key`
 - that key is the same long-lived persistent per-device key used for later offline/local control
 
-### NuraPopupWpf
+### NuraDesktop
 
-`NuraPopupWpf` is the experimental GUI client. It is useful for validating view-model and binding behavior, but `NuraApp` is the simpler reference for SDK host flow.
+`NuraDesktop` is the WPF GUI client. It supports demo and live startup modes, capability-aware controls, automatic setup for connected devices, battery display, hearing-profile rendering, queued/applying feedback while device commands are in flight, and GitHub release updates with per-version skip controls.
 
 For SDK usage details, read `docs/SDK-Guide.md`.
 
 ## Repository Layout
 
-- `NuraApp`
-  - console/TUI sample app using `NuraLib`
+
 - `src/NuraLib`
-  - reusable library source
-- `src/NuraDesktopApp`
-  - `NuraDesktopConsole` source
-- `src/NuraPopupWpf`
-  - experimental WPF client source
+  - the sdk / library to interact with nura devices
+- `src/NuraTerm`
+  - console/TUI sample app using `NuraLib`
+- `src/NuraDesktop`
+  - experimental WPF UI desktop app using `NuraLib`
 - `tests/NuraLib.Tests`
   - lightweight packet and library behavior tests
+- `src/NuraUtilityConsole`
+  - `NuraUtilityConsole` source
 - `docs/SDK-Guide.md`
   - public SDK integration guide
 - `NuraDesktopApp.slnx`
   - solution file
-- `NuGet.Config`
-  - local NuGet config
-- `logs`
-  - session logs written by `NuraDesktopConsole`
-- `nura-config.json`
-  - local device config, not committed
-- `nura-auth.json`
-  - local auth/bootstrap state, not committed
 
 ## Build And Run
 
 Build everything:
 
 ```powershell
-dotnet build .\NuraDesktopApp.slnx --configfile .\NuGet.Config
+dotnet build .\NuraDesktopApp.slnx
 ```
 
 Run the console/TUI sample app:
 
 ```powershell
-dotnet run --project .\src\NuraApp\NuraApp.csproj
+dotnet run --project .\src\NuraTerm\NuraTerm.csproj
 ```
 
 Build the console app:
 
 ```powershell
-dotnet build .\src\NuraDesktopApp\NuraDesktopConsole.csproj -v minimal
+dotnet build .\src\NuraTerm\NuraTerm.csproj -v minimal
 ```
 
 Build the library:
@@ -162,6 +163,16 @@ Build the library:
 ```powershell
 dotnet build .\src\NuraLib\NuraLib.csproj -v minimal
 ```
+
+## Release Build
+
+The repository release script publishes `NuraTerm`, `NuraDesktop`, and `UpdateRunner`, then produces both self-contained and framework-dependent Windows archives. `UpdateRunner.exe` must remain beside the applications for in-place update installation:
+
+```powershell
+dotnet run --file build.cs -- release --version 1.2.0
+```
+
+Use `--skip-tests` only when tests have already been run separately. Release archives are written to `artifacts/release`.
 
 Run the library tests:
 
@@ -181,11 +192,13 @@ $env:APPDATA="$PWD\.appdata"
 
 ## Configuration
 
-### `nura-config.json`
+The shipped applications keep NuraLib state and application presentation state in separate files.
+
+### `settings.nura.json`
 
 This stores durable local device information.
 
-`NuraLib` and `NuraApp` use this as the durable host-owned config file.
+`NuraTerm` and `NuraDesktop` use this as the durable host-owned NuraLib config file.
 
 It stores:
 
@@ -247,17 +260,25 @@ It can contain things like:
 
 For `NuraLib`, this file is not the intended final public config model. It is primarily part of the current test harness workflow.
 
-## NuraApp Sample
+### `settings.tui.json`
+
+`NuraTerm` stores its presentation preferences separately from NuraLib state. It currently contains the trace/debug-message preference.
+
+### `settings.gui.json`
+
+`NuraDesktop` stores GUI-only preferences separately from NuraLib state. The portable release writes this beside the application; demo mode uses a `demo` subdirectory.
+
+## NuraTerm Sample
 
 Run the sample with:
 
 ```powershell
-dotnet run --project .\src\NuraApp\NuraApp.csproj
+dotnet run --project .\src\NuraTerm\NuraTerm.csproj
 ```
 
 Expected flow:
 
-1. loads or creates `nura-config.json`
+1. loads or creates `settings.nura.json`
 2. resumes stored auth if available
 3. prompts for email-code login if needed
 4. starts connection monitoring
@@ -267,12 +288,12 @@ Expected flow:
 
 The sample stores config in the current working directory for convenience. Production hosts should use an app-owned location such as `%LOCALAPPDATA%` or an encrypted settings store.
 
-## NuraDesktopConsole Commands
+## NuraUtilityConsole Commands
 
 Run commands with:
 
 ```powershell
-dotnet run --project .\src\NuraDesktopApp\NuraDesktopConsole.csproj -- <command> [subcommand]
+dotnet run --project .\src\NuraUtilityConsole\NuraUtilityConsole.csproj -- <command> [subcommand]
 ```
 
 ### Main Command Groups
@@ -293,38 +314,38 @@ dotnet run --project .\src\NuraDesktopApp\NuraDesktopConsole.csproj -- <command>
 List connected Nuraphone devices:
 
 ```powershell
-dotnet run --project .\src\NuraDesktopApp\NuraDesktopConsole.csproj -- probe devices
+dotnet run --project .\src\NuraUtilityConsole\NuraUtilityConsole.csproj -- probe devices
 ```
 
 Read unencrypted serial / firmware metadata:
 
 ```powershell
-dotnet run --project .\src\NuraDesktopApp\NuraDesktopConsole.csproj -- probe hw-info
+dotnet run --project .\src\NuraUtilityConsole\NuraUtilityConsole.csproj -- probe hw-info
 ```
 
 Run the fresh startup/bootstrap flow to `session/start_3`:
 
 ```powershell
-dotnet run --project .\src\NuraDesktopApp\NuraDesktopConsole.csproj -- flow init-to-start3
+dotnet run --project .\src\NuraUtilityConsole\NuraUtilityConsole.csproj -- flow init-to-start3
 ```
 
 Continue the backend bootstrap:
 
 ```powershell
-dotnet run --project .\src\NuraDesktopApp\NuraDesktopConsole.csproj -- auth session-start-next
+dotnet run --project .\src\NuraUtilityConsole\NuraUtilityConsole.csproj -- auth session-start-next
 ```
 
 Run the ANC toggle validation:
 
 ```powershell
-dotnet run --project .\src\NuraDesktopApp\NuraDesktopConsole.csproj -- headset anc-toggle-test
+dotnet run --project .\src\NuraUtilityConsole\NuraUtilityConsole.csproj -- headset anc-toggle-test
 ```
 
 ## Logging
 
-Every `NuraDesktopConsole` run creates a timestamped log file in `logs`.
+Every `NuraUtilityConsole` run creates a timestamped log file in `logs`.
 
-`NuraApp` logs to the console.
+`NuraTerm` logs to the console.
 
 Treat all logs as sensitive. They may contain:
 
@@ -347,7 +368,7 @@ Use caution with:
 
 Current safe starting points:
 
-- `NuraApp`
+- `NuraTerm`
 - `probe devices`
 - `probe hw-info`
 - `flow init-to-start3`
@@ -357,13 +378,13 @@ Current safe starting points:
 
 Short-term:
 
-- keep `NuraDesktopConsole` as the experimentation and packet-analysis harness
+- keep `NuraUtilityConsole` as the experimentation and packet-analysis harness
 - continue porting stable pieces into `NuraLib`
 
 Long-term:
 
 - use `NuraLib` as the public Windows integration surface
-- keep `NuraApp` as the minimal SDK sample and smoke-test host
+- keep `NuraTerm` as the minimal SDK sample and smoke-test host
 - keep backend use limited to one-time bootstrap or recovery while the API still exists
 - rely on the recovered persistent device key for normal ongoing local control
 

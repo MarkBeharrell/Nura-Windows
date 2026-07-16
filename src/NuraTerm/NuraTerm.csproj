@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<ApplicationIcon>..\..\resources\icons\color\ico\Nuraphones_color_white_outline_02-soft.ico</ApplicationIcon>
+
+
+		<Version>1.2.1</Version>
+		<AssemblyVersion>1.2.1.0</AssemblyVersion>
+		<FileVersion>1.2.1.0</FileVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\NuraLib\NuraLib.csproj" />
+		<ProjectReference Include="..\UpdateLib\UpdateLib.csproj" />
+	</ItemGroup>
+
+</Project>

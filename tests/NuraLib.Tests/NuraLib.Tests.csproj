@@ -9,7 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\NuraDesktop\NuraDesktop.csproj" />
     <ProjectReference Include="..\..\src\NuraLib\NuraLib.csproj" />
+    <ProjectReference Include="..\..\src\UpdateLib\UpdateLib.csproj" />
   </ItemGroup>
 
 </Project>

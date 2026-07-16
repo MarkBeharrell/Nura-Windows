@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<LangVersion>latest</LangVersion>
+
+		<ApplicationIcon>..\..\resources\icons\normal\ico\Nuraphones_vector_white_outline_02-soft.ico</ApplicationIcon>
+
+		<Version>1.2.1</Version>
+		<AssemblyVersion>1.2.1.0</AssemblyVersion>
+		<FileVersion>1.2.1.0</FileVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\NuraLib\NuraLib.csproj" />
+		<ProjectReference Include="..\UpdateLib\UpdateLib.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Resource Include="Resources\Images\NuraphonesMinimal.png" />
+		<Resource Include="Resources\Images\NuraphonesMinimalColor.png" />
+		<Resource Include="Resources\Images\NuraphonesVector.svg" />
+		<Resource Include="Resources\Images\NuraphonesColorVector.svg" />
+	</ItemGroup>
+</Project>

@@ -3,6 +3,8 @@
 .dotnet_home/
 .dotnet/
 global.json
+app-settings.json
+artifacts
 
 # Ignore binaries.
 bin/
@@ -451,3 +453,6 @@ FodyWeavers.xsd
 *.msp
 
 README.md
+
+# Keep the checked-in architecture guide for the WPF client.
+!src/NuraDesktop/README.md
