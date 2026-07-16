@@ -96,7 +96,7 @@ is actually correct; the two may be interchangeable here.
 
 ## 3. Device discovery: the harness cannot see a TruePro
 
-`src/NuraDesktopApp/Library/Transport/BluetoothDeviceProbe.cs` filters on:
+`src/NuraUtilityConsole/Library/Transport/BluetoothDeviceProbe.cs` (`FindConnectedNuraphones`) filters on:
 
 ```csharp
 deviceInfo.Name.StartsWith("Nuraphone", StringComparison.OrdinalIgnoreCase)
