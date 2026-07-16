@@ -20,9 +20,9 @@ public static class NuraDeviceCapabilities {
             "nurapro" or "nuratrue pro" or "denon perl pro" or "denon pro" or "nurapro_left" or "nuraproleft" or "nurapro_right" or "nuraproright" or "nurapro_base" or "nuraprobase" => NuraDeviceType.NuraTruePro,
             "nurasport" or "nuratrue sport" => NuraDeviceType.NuraTrueSport,
             "nuratrue" or "denon perl" or "tws" or "tws_left" or "twsleft" or "tws_right" or "twsright" or "tws_base" or "twsbase" => NuraDeviceType.NuraTrue,
-            _ when normalized.Contains("nurapro") => NuraDeviceType.NuraTruePro,
+            _ when normalized.Contains("nurapro") || normalized.Contains("nuratrue pro") => NuraDeviceType.NuraTruePro,
             _ when normalized.Contains("nurabuds") || normalized.Contains("nuralite") => NuraDeviceType.NuraBuds,
-            _ when normalized.Contains("nurasport") => NuraDeviceType.NuraTrueSport,
+            _ when normalized.Contains("nurasport") || normalized.Contains("nuratrue sport") => NuraDeviceType.NuraTrueSport,
             _ when normalized.Contains("nuratrue") || normalized.Contains("denon perl") => NuraDeviceType.NuraTrue,
             _ when normalized.Contains("nuraloop") => NuraDeviceType.NuraLoop,
             _ when normalized.Contains("nuraphone") => NuraDeviceType.Nuraphone,
@@ -357,6 +357,32 @@ public static class NuraDeviceCapabilities {
                 break;
 
             case NuraDeviceType.NuraTruePro:
+                // Confirmed against real NuraTrue Pro hardware (fw 400188, the latest the backend
+                // serves): this family has NO triple-tap. Button configuration is served on command
+                // 0xB7 as a 6-byte double-tap layout (L/R single, double, hold). Claiming TripleTap
+                // here makes GetButtonConfiguration query the 8-byte/0x73 variant, which the device
+                // answers with an empty payload and the parser then rejects.
+                features |= GetTwsBaseFeatures() |
+                            NuraSupportedFeatures.HeadDetection |
+                            NuraSupportedFeatures.ManualHeadDetection |
+                            NuraSupportedFeatures.Multipoint |
+                            NuraSupportedFeatures.PersonalisedMode |
+                            NuraSupportedFeatures.Spatial |
+                            NuraSupportedFeatures.ProEq |
+                            NuraSupportedFeatures.EuAttenuation |
+                            NuraSupportedFeatures.AnalogDigitalEuAttenuation |
+                            NuraSupportedFeatures.ButtonVoiceAssistant |
+                            NuraSupportedFeatures.BulkCommands |
+                            NuraSupportedFeatures.ButtonKickItUpDown |
+                            NuraSupportedFeatures.VoicePromptGain;
+
+                // Confirmed against real hardware (fw 400188): the NuraTrue Pro has ANC on/off and
+                // passthrough but NO numeric ANC level and no global-ANC toggle in the queried form.
+                // Querying GetANCLevel or GetGlobalAncEnabled makes the headset drop the RFCOMM link,
+                // after which Windows refuses reconnection (WSAEINVAL) for a while.
+                features &= ~(NuraSupportedFeatures.AncLevel | NuraSupportedFeatures.GlobalAncToggle);
+                break;
+
             case NuraDeviceType.NuraTrueSport:
                 features |= GetTwsBaseFeatures() |
                             NuraSupportedFeatures.HeadDetection |

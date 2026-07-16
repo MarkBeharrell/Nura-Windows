@@ -9,6 +9,11 @@ using NuraLib.Logging;
 using NuraLib.Protocol;
 using NuraLib.Utilities;
 
+if (args.Length > 0 && args[0] == "probe") {
+    await NuraLib.Tests.LiveButtonProbe.RunAsync(args);
+    return;
+}
+
 var tests = new CommandRoundTripTests();
 tests.RunAll();
 var deviceManagerTests = new DeviceManagerStabilityTests();

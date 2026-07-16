@@ -315,23 +315,23 @@ public sealed class ConnectedNuraDevice : NuraDevice {
         }
 
         if (Info.Supports(NuraAudioCapabilities.AncLevel)) {
-            await RetrieveAncLevelAsync(cancellationToken);
+            await TryRefreshStepAsync("ANC level", RetrieveAncLevelAsync, cancellationToken);
         }
 
         if (Info.Supports(NuraAudioCapabilities.GlobalAncToggle)) {
-            await RetrieveGlobalAncEnabledAsync(cancellationToken);
+            await TryRefreshStepAsync("global ANC", RetrieveGlobalAncEnabledAsync, cancellationToken);
         }
 
         if (!UsesClassicKickitCommands() && Info.Supports(NuraAudioCapabilities.PersonalisedMode)) {
-            await RetrievePersonalisationModeAsync(cancellationToken);
+            await TryRefreshStepAsync("personalisation mode", RetrievePersonalisationModeAsync, cancellationToken);
         }
 
         if (!UsesClassicKickitCommands() && Info.Supports(NuraAudioCapabilities.Immersion)) {
-            await RetrieveImmersionLevelAsync(cancellationToken);
+            await TryRefreshStepAsync("immersion level", RetrieveImmersionLevelAsync, cancellationToken);
         }
 
         if (Info.Supports(NuraAudioCapabilities.Spatial)) {
-            await RetrieveSpatialEnabledAsync(cancellationToken);
+            await TryRefreshStepAsync("spatial state", RetrieveSpatialEnabledAsync, cancellationToken);
         }
     }
 
@@ -370,11 +370,11 @@ public sealed class ConnectedNuraDevice : NuraDevice {
         var profileId = await RequireCurrentProfileIdAsync(cancellationToken);
 
         if (Info.Supports(NuraInteractionCapabilities.TouchButtons)) {
-            await RetrieveTouchButtonsAsync(cancellationToken);
+            await TryRefreshStepAsync("touch buttons", RetrieveTouchButtonsAsync, cancellationToken);
         }
 
         if (Info.Supports(NuraInteractionCapabilities.Dial)) {
-            await RetrieveDialAsync(cancellationToken);
+            await TryRefreshStepAsync("dial", RetrieveDialAsync, cancellationToken);
         }
     }
 
@@ -575,7 +575,7 @@ public sealed class ConnectedNuraDevice : NuraDevice {
     internal async Task<NuraPersonalisationMode?> RetrievePersonalisationModeAsync(CancellationToken cancellationToken) {
         await EnsureConnectedAsync(cancellationToken);
 
-        if (UsesClassicKickitCommands()) {
+        if (UsesEnabledFlagPersonalisation()) {
             var mode = await NuraLocalSessionSupport.ReadKickitEnabledAsync(_session!, _logger, cancellationToken);
             State.UpdatePersonalisationMode(mode);
             return mode;
@@ -590,7 +590,7 @@ public sealed class ConnectedNuraDevice : NuraDevice {
     internal async Task SetPersonalisationModeAsync(NuraPersonalisationMode mode, CancellationToken cancellationToken) {
         await EnsureConnectedAsync(cancellationToken);
 
-        if (UsesClassicKickitCommands()) {
+        if (UsesEnabledFlagPersonalisation()) {
             await NuraLocalSessionSupport.SetKickitEnabledAsync(_session!, _logger, mode, cancellationToken);
             State.UpdatePersonalisationMode(mode);
             return;
@@ -749,6 +749,36 @@ public sealed class ConnectedNuraDevice : NuraDevice {
         }
     }
 
+    // Runs a single optional refresh read as best-effort. Individual state reads can fail on
+    // unverified device families - some headsets (e.g. NuraTrue Pro) reject an unsupported command
+    // by dropping the RFCOMM link, which would otherwise abort the whole refresh and monitoring
+    // setup. On failure we log and tear the (possibly dead) session down so the next step reconnects.
+    private async Task TryRefreshStepAsync(string description, Func<CancellationToken, Task> step, CancellationToken cancellationToken) {
+        try {
+            await EnsureConnectedAsync(cancellationToken);
+            await step(cancellationToken);
+        } catch (OperationCanceledException) {
+            throw;
+        } catch (Exception ex) {
+            _logger.Warning(Source, $"{Info.DisplayName}: skipped {description} during refresh ({ex.Message}); the device may not support this command.");
+            await ResetLocalSessionForReconnectAsync();
+        }
+    }
+
+    // Disposes the current session and clears it so the next EnsureConnectedAsync rebuilds a fresh
+    // encrypted session (new nonce + handshake). Used to recover after a headset-initiated link drop.
+    private async Task ResetLocalSessionForReconnectAsync() {
+        var session = _session;
+        _session = null;
+        if (session is not null) {
+            try {
+                await session.DisposeAsync();
+            } catch {
+                // Best effort: the underlying socket may already be closed by the headset.
+            }
+        }
+    }
+
     private async Task EnsureConnectedCoreAsync(CancellationToken cancellationToken) {
         await _connectGate.WaitAsync(cancellationToken);
         try {
@@ -835,6 +865,13 @@ public sealed class ConnectedNuraDevice : NuraDevice {
     }
 
     private bool UsesClassicKickitCommands() => Info.DeviceType == NuraDeviceType.Nuraphone;
+
+    // Personalisation on/off is exposed via the classic enabled-flag commands
+    // (GetKickitEnabled 0xB4 / SetKickitEnabled 0xB3) on the Nuraphone AND the NuraTrue Pro.
+    // Confirmed against NuraTrue Pro fw 400188: the TWS kickit-state path returns an empty
+    // payload there, while the enabled-flag commands read/write personalisation correctly.
+    private bool UsesEnabledFlagPersonalisation() =>
+        Info.DeviceType is NuraDeviceType.Nuraphone or NuraDeviceType.NuraTruePro;
 
     private bool SupportsDirectAncStateTransport() =>
         Info.Supports(NuraAudioCapabilities.Anc) &&
